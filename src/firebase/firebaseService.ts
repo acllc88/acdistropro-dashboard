@@ -7,7 +7,7 @@ import {
 import { db } from './config';
 import {
   Client, Channel, Movie, Series, ClientFinancials,
-  AdminNotification, ClientNotification
+  AdminNotification, ClientNotification, SupportTicket
 } from '../types';
 import { initialClients, initialChannels, initialMovies, initialSeries, initialFinancials } from '../data/initialData';
 
@@ -221,4 +221,22 @@ export async function updateDeviceDistribution(clientId: string, deviceDistribut
 
 export async function updateClientNotifications(clientId: string, notifications: ClientNotification[]): Promise<void> {
   await updateDoc(doc(db, COLLECTIONS.clients, clientId), { notifications: stripUndefined(notifications as unknown as DocumentData) });
+}
+
+// ─── Support Tickets ──────────────────────────────────────────────────
+
+export function subscribeToTickets(cb: (tickets: SupportTicket[]) => void): Unsubscribe {
+  const q = query(collection(db, 'tickets'), orderBy('updatedAt', 'desc'));
+  return onSnapshot(q, snap => {
+    const tickets = snap.docs.map(d => ({ ...d.data() } as SupportTicket));
+    cb(tickets);
+  }, err => console.error('tickets listener error:', err));
+}
+
+export async function saveTicket(ticket: SupportTicket): Promise<void> {
+  await setDoc(doc(db, 'tickets', ticket.id), stripUndefined(ticket as unknown as DocumentData));
+}
+
+export async function updateTicket(ticketId: string, data: Partial<SupportTicket>): Promise<void> {
+  await updateDoc(doc(db, 'tickets', ticketId), stripUndefined(data as unknown as DocumentData));
 }

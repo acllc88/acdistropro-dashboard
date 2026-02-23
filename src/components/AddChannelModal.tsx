@@ -8,7 +8,12 @@ interface AddChannelModalProps {
   onAdd: (channel: { name: string; category: string; description: string; logo: string; clientId: string | null }) => void;
 }
 
-const emojis = ['📺', '🎬', '🎭', '🎪', '🎯', '🎮', '🏰', '🚀', '🌟', '📡', '🎵', '🎸', '⚡', '🔥', '🌊', '🎨'];
+const emojis = [
+  '📺','🎬','🎭','🎪','🎯','🎮','🏰','🚀','🌟','📡',
+  '🎵','🎸','⚡','🔥','🌊','🎨','🏆','👑','💎','🌈',
+  '🎤','🎹','🥁','🎺','🎻','🦁','🐉','🛸','💫','🎊',
+  '🎉','💥','🌍','🔬','💡','🖥️','📱','🎓','❤️','⭐',
+];
 const categories = ['Entertainment', 'Family', 'Premium', 'Sports', 'News', 'Documentary', 'Music'];
 
 export function AddChannelModal({ clients, onClose, onAdd }: AddChannelModalProps) {

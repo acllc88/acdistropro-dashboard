@@ -2,7 +2,8 @@ import { useState, useCallback, useEffect } from 'react';
 import {
   Client, Channel, Movie, Series, ViewMode, AppMode,
   ClientFinancials, ClientNotification, AdminNotification,
-  DistributionPlatform, DistributionChannel, AdminAction
+  DistributionPlatform, DistributionChannel, AdminAction,
+  SupportTicket, MonthlyRevenue, PaymentRecord
 } from './types';
 import { Sidebar } from './components/Sidebar';
 import { DashboardView } from './components/DashboardView';
@@ -12,6 +13,8 @@ import { ChannelsView } from './components/ChannelsView';
 import { ChannelDetailView } from './components/ChannelDetailView';
 import { MoviesView } from './components/MoviesView';
 import { SeriesView } from './components/SeriesView';
+import { AdminTicketsView } from './components/AdminTicketsView';
+import { AdminRevenueManager } from './components/AdminRevenueManager';
 import { AddClientModal } from './components/AddClientModal';
 import { AddChannelModal } from './components/AddChannelModal';
 import { AddMovieModal } from './components/AddMovieModal';
@@ -51,6 +54,9 @@ import {
   markAllAdminNotifsRead,
   clearAllAdminNotifs,
   updateClientNotifications,
+  subscribeToTickets,
+  saveTicket as fbSaveTicket,
+  updateTicket as fbUpdateTicket,
 } from './firebase/firebaseService';
 
 const colorOptions = [
@@ -80,6 +86,7 @@ export function App() {
   const [series, setSeries] = useState<Series[]>([]);
   const [financials, setFinancials] = useState<Record<string, ClientFinancials>>(initialFinancials);
   const [adminNotifications, setAdminNotifications] = useState<AdminNotification[]>([]);
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
 
   // ── Admin UI State ────────────────────────────────────────────────────
   const [activeView, setActiveView] = useState<ViewMode>('dashboard');
@@ -108,6 +115,7 @@ export function App() {
       unsubs.push(subscribeToSeries(setSeries));
       unsubs.push(subscribeToFinancials(setFinancials));
       unsubs.push(subscribeToAdminNotifications(setAdminNotifications));
+      unsubs.push(subscribeToTickets(setTickets));
 
       setTimeout(() => setIsLoading(false), 1200);
     }
@@ -481,6 +489,142 @@ export function App() {
   ) => {
     try { await updateDeviceDistribution(clientId, dd); } catch (e) { console.error(e); }
   }, []);
+
+  // ── Ticket Handlers ────────────────────────────────────────────────────
+  const handleCreateTicket = useCallback(async (
+    clientId: string,
+    subject: string,
+    category: SupportTicket['category'],
+    priority: SupportTicket['priority'],
+    message: string
+  ) => {
+    const client = clients.find(c => c.id === clientId);
+    if (!client) return;
+
+    const ticket: SupportTicket = {
+      id: `ticket-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      clientId,
+      clientName: client.name,
+      clientCompany: client.company,
+      clientEmail: client.email,
+      clientLogo: client.logo,
+      subject,
+      category,
+      priority,
+      status: 'Open',
+      messages: [{
+        id: `msg-${Date.now()}`,
+        senderId: clientId,
+        senderName: client.name,
+        senderType: 'client',
+        message,
+        timestamp: new Date().toISOString(),
+      }],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    try { await fbSaveTicket(ticket); } catch (e) { console.error(e); }
+
+    await pushAdminNotification({
+      clientId: client.id,
+      clientName: client.name,
+      clientLogo: client.logo,
+      title: '🎫 New Support Ticket',
+      message: `${client.name} created a ${priority} priority ticket: "${subject}"`,
+      type: 'client_action',
+    });
+  }, [clients, pushAdminNotification]);
+
+  const handleReplyTicket = useCallback(async (
+    ticketId: string,
+    senderId: string,
+    senderName: string,
+    senderType: 'client' | 'admin',
+    message: string
+  ) => {
+    const ticket = tickets.find(t => t.id === ticketId);
+    if (!ticket) return;
+
+    const newMessage = {
+      id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      senderId,
+      senderName,
+      senderType,
+      message,
+      timestamp: new Date().toISOString(),
+    };
+
+    const updatedTicket: Partial<SupportTicket> = {
+      messages: [...ticket.messages, newMessage],
+      updatedAt: new Date().toISOString(),
+      status: senderType === 'admin' && ticket.status === 'Open' ? 'In Progress' : ticket.status,
+    };
+
+    try { await fbUpdateTicket(ticketId, updatedTicket); } catch (e) { console.error(e); }
+
+    if (senderType === 'admin') {
+      await pushNotification(ticket.clientId, {
+        title: '💬 Ticket Reply',
+        message: `Admin replied to your ticket: "${ticket.subject}"`,
+        type: 'info',
+      });
+    } else {
+      await pushAdminNotification({
+        clientId: ticket.clientId,
+        clientName: ticket.clientName,
+        clientLogo: ticket.clientLogo,
+        title: '💬 Ticket Reply',
+        message: `${ticket.clientName} replied to ticket: "${ticket.subject}"`,
+        type: 'client_action',
+      });
+    }
+  }, [tickets, pushNotification, pushAdminNotification]);
+
+  const handleUpdateTicketStatus = useCallback(async (ticketId: string, status: SupportTicket['status']) => {
+    try { await fbUpdateTicket(ticketId, { status, updatedAt: new Date().toISOString() }); } catch (e) { console.error(e); }
+  }, []);
+
+  // ── PayPal Handler ────────────────────────────────────────────────────
+  const handleSavePayPal = useCallback(async (clientId: string, email: string) => {
+    try { await updateClient(clientId, { paypalEmail: email } as Partial<Client>); } catch (e) { console.error(e); }
+    await pushNotification(clientId, {
+      title: '💳 PayPal Updated',
+      message: `Your PayPal email has been updated to ${email}.`,
+      type: 'success',
+    });
+  }, [pushNotification]);
+
+  // ── Revenue Handlers ──────────────────────────────────────────────────
+  const handleAddMonthlyRevenue = useCallback(async (clientId: string, revenue: MonthlyRevenue) => {
+    const fin = financials[clientId] || { clientId, payments: [], monthlyRevenue: [] };
+    const existing = fin.monthlyRevenue.findIndex(r => r.month === revenue.month);
+    const updatedRevenue = [...fin.monthlyRevenue];
+    if (existing >= 0) {
+      updatedRevenue[existing] = revenue;
+    } else {
+      updatedRevenue.push(revenue);
+    }
+    const updatedFin = { ...fin, monthlyRevenue: updatedRevenue };
+    try { await saveFinancials(clientId, updatedFin); } catch (e) { console.error(e); }
+    await pushNotification(clientId, {
+      title: '📊 Revenue Updated',
+      message: `Your revenue for ${revenue.month} has been updated to $${revenue.amount.toLocaleString()}.`,
+      type: 'info',
+    });
+  }, [financials, pushNotification]);
+
+  const handleAddPayment = useCallback(async (clientId: string, payment: PaymentRecord) => {
+    const fin = financials[clientId] || { clientId, payments: [], monthlyRevenue: [] };
+    const updatedPayments = [payment, ...fin.payments];
+    const updatedFin = { ...fin, payments: updatedPayments };
+    try { await saveFinancials(clientId, updatedFin); } catch (e) { console.error(e); }
+    await pushNotification(clientId, {
+      title: '💰 Payment Added',
+      message: `A payment of $${payment.amount.toLocaleString()} (${payment.method}) has been recorded as ${payment.status}.`,
+      type: payment.status === 'Paid' ? 'success' : 'info',
+    });
+  }, [financials, pushNotification]);
 
   // ── Channel CRUD ──────────────────────────────────────────────────────
   const handleViewChannel = useCallback((channelId: string) => {
@@ -860,6 +1004,27 @@ export function App() {
           />
         );
 
+      case 'tickets':
+        return (
+          <AdminTicketsView
+            tickets={tickets}
+            onReplyTicket={(ticketId, message) =>
+              handleReplyTicket(ticketId, 'admin', 'ACDistro Pro Support', 'admin', message)
+            }
+            onUpdateTicketStatus={handleUpdateTicketStatus}
+          />
+        );
+
+      case 'revenue':
+        return (
+          <AdminRevenueManager
+            clients={clients}
+            financials={financials}
+            onAddMonthlyRevenue={handleAddMonthlyRevenue}
+            onAddPayment={handleAddPayment}
+          />
+        );
+
       default:
         return null;
     }
@@ -905,6 +1070,8 @@ export function App() {
       monthlyRevenue: [],
     };
 
+    const clientTickets = tickets.filter(t => t.clientId === loggedInClientId);
+
     return (
       <ClientPortal
         client={loggedClient}
@@ -912,6 +1079,7 @@ export function App() {
         movies={clientMovies}
         series={clientSeries}
         financials={clientFinancials}
+        tickets={clientTickets}
         onExitPortal={handleClientLogout}
         onMarkNotificationRead={(id) => handleMarkNotificationRead(loggedInClientId, id)}
         onMarkAllRead={() => handleMarkAllNotificationsRead(loggedInClientId)}
@@ -921,6 +1089,13 @@ export function App() {
         onRemoveRokuChannel={(rokuChannelId) =>
           handleRemoveRokuChannel(loggedInClientId, rokuChannelId)
         }
+        onCreateTicket={(subject, category, priority, message) =>
+          handleCreateTicket(loggedInClientId, subject, category, priority, message)
+        }
+        onReplyTicket={(ticketId, message) =>
+          handleReplyTicket(ticketId, loggedInClientId, loggedClient.name, 'client', message)
+        }
+        onSavePayPal={(email) => handleSavePayPal(loggedInClientId, email)}
       />
     );
   }

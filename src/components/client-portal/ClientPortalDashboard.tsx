@@ -1,18 +1,22 @@
 import { useState } from 'react';
-import { Client, Channel, Movie, Series, ClientFinancials, DistributionPlatform } from '../../types';
+import { Client, Channel, Movie, Series, ClientFinancials, DistributionPlatform, SupportTicket } from '../../types';
 import { ClientPortalOverview } from './ClientPortalOverview';
 import { ClientPortalAnalytics } from './ClientPortalAnalytics';
 import { ClientPortalEarnings } from './ClientPortalEarnings';
 import { ClientPortalContent } from './ClientPortalContent';
 import { ClientPortalNotifications } from './ClientPortalNotifications';
 import { ClientPortalRoku } from './ClientPortalRoku';
+import { ClientSupportTickets } from './ClientSupportTickets';
+import { ClientPayPalSettings } from './ClientPayPalSettings';
+import { ClientChatbot } from './ClientChatbot';
 import {
   LayoutDashboard, BarChart2, DollarSign, PlaySquare,
-  Bell, LogOut, ChevronLeft, ChevronRight, Menu, X, Tv2
+  Bell, LogOut, ChevronLeft, ChevronRight, Menu, X, Tv2,
+  MessageSquare, CreditCard
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
-type PortalTab = 'overview' | 'analytics' | 'earnings' | 'content' | 'notifications' | 'roku';
+type PortalTab = 'overview' | 'analytics' | 'earnings' | 'content' | 'notifications' | 'roku' | 'support' | 'paypal';
 
 interface ClientPortalDashboardProps {
   client: Client;
@@ -20,17 +24,22 @@ interface ClientPortalDashboardProps {
   movies: Movie[];
   series: Series[];
   financials: ClientFinancials;
+  tickets: SupportTicket[];
   onExitPortal: () => void;
   onMarkNotificationRead: (id: string) => void;
   onMarkAllRead: () => void;
   onAddRokuChannel: (channelId: string, channelName: string, platform: DistributionPlatform) => void;
   onRemoveRokuChannel: (rokuChannelId: string) => void;
+  onCreateTicket: (subject: string, category: SupportTicket['category'], priority: SupportTicket['priority'], message: string) => void;
+  onReplyTicket: (ticketId: string, message: string) => void;
+  onSavePayPal: (email: string) => void;
 }
 
 export function ClientPortalDashboard({
-  client, channels, movies, series, financials,
+  client, channels, movies, series, financials, tickets,
   onExitPortal, onMarkNotificationRead, onMarkAllRead,
-  onAddRokuChannel, onRemoveRokuChannel
+  onAddRokuChannel, onRemoveRokuChannel,
+  onCreateTicket, onReplyTicket, onSavePayPal
 }: ClientPortalDashboardProps) {
   const [activeTab, setActiveTab] = useState<PortalTab>('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -45,6 +54,8 @@ export function ClientPortalDashboard({
     { id: 'earnings' as PortalTab, label: 'Earnings', icon: DollarSign, color: 'text-emerald-400' },
     { id: 'content' as PortalTab, label: 'My Content', icon: PlaySquare, color: 'text-amber-400' },
     { id: 'roku' as PortalTab, label: 'Distribution', icon: Tv2, color: 'text-cyan-400', badge: rokuCount },
+    { id: 'support' as PortalTab, label: 'Support', icon: MessageSquare, color: 'text-orange-400', badge: tickets.filter(t => t.clientId === client.id && t.status !== 'Closed').length },
+    { id: 'paypal' as PortalTab, label: 'PayPal', icon: CreditCard, color: 'text-blue-400' },
     { id: 'notifications' as PortalTab, label: 'Notifications', icon: Bell, color: 'text-pink-400', badge: unreadCount },
   ];
 
@@ -60,6 +71,10 @@ export function ClientPortalDashboard({
         return <ClientPortalContent channels={channels} movies={movies} series={series} />;
       case 'roku':
         return <ClientPortalRoku client={client} onAddChannel={onAddRokuChannel} onRemoveChannel={onRemoveRokuChannel} />;
+      case 'support':
+        return <ClientSupportTickets tickets={tickets} clientId={client.id} clientName={client.name} onCreateTicket={onCreateTicket} onReplyTicket={onReplyTicket} />;
+      case 'paypal':
+        return <ClientPayPalSettings client={client} onSavePayPal={onSavePayPal} />;
       case 'notifications':
         return <ClientPortalNotifications notifications={client.notifications} onMarkRead={onMarkNotificationRead} onMarkAllRead={onMarkAllRead} />;
       default:
@@ -274,6 +289,14 @@ export function ClientPortalDashboard({
           {renderContent()}
         </main>
       </div>
+
+      {/* ── AI CHATBOT ── */}
+      <ClientChatbot
+        client={client}
+        channels={channels}
+        movies={movies}
+        series={series}
+      />
     </div>
   );
 }

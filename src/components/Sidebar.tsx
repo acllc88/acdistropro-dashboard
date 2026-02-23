@@ -1,7 +1,8 @@
 import {
   LayoutDashboard, Tv, Film, Users, Clapperboard, Plus,
   ChevronLeft, ChevronRight, LogOut, Menu, X,
-  Bell, Check, Trash2, Eye, LogIn, Key, Tv2, AlertCircle
+  Bell, Check, Trash2, Eye, LogIn, Key, Tv2, AlertCircle,
+  MessageSquare, DollarSign
 } from 'lucide-react';
 import { ViewMode, AdminNotification } from '../types';
 import { cn } from '../utils/cn';
@@ -69,6 +70,8 @@ export function Sidebar({
     { id: 'channels' as ViewMode, label: 'Channels', icon: Tv },
     { id: 'movies' as ViewMode, label: 'Movies', icon: Film },
     { id: 'series' as ViewMode, label: 'Series', icon: Clapperboard },
+    { id: 'tickets' as ViewMode, label: 'Tickets', icon: MessageSquare },
+    { id: 'revenue' as ViewMode, label: 'Revenue', icon: DollarSign },
   ];
 
   const quickActions = [

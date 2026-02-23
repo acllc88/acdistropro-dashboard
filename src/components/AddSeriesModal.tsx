@@ -1,11 +1,17 @@
-import { X } from 'lucide-react';
+import { X, Sparkles, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { Channel } from '../types';
+import { getAIRating } from '../services/aiService';
 
 interface AddSeriesModalProps {
   channels: Channel[];
   onClose: () => void;
-  onAdd: (series: { title: string; genre: string; year: number; rating: number; seasons: number; episodes: number; episodeDuration: string; description: string; language: string; poster: string; status: 'Ongoing' | 'Completed' | 'Cancelled'; channelId: string | null }) => void;
+  onAdd: (series: {
+    title: string; genre: string; year: number; rating: number;
+    seasons: number; episodes: number; episodeDuration: string;
+    description: string; language: string; poster: string;
+    status: 'Ongoing' | 'Completed' | 'Cancelled'; channelId: string | null;
+  }) => void;
 }
 
 const emojis = ['🎬', '🎭', '👑', '🚀', '⚡', '🐉', '💰', '💥', '⚽', '🔴', '🌀', '🏠', '🌌', '🦑', '🏜️', '🎪', '🎯', '🌟', '🔥', '🌊'];
@@ -26,6 +32,18 @@ export function AddSeriesModal({ channels, onClose, onAdd }: AddSeriesModalProps
   const [poster, setPoster] = useState('🎬');
   const [status, setStatus] = useState<'Ongoing' | 'Completed' | 'Cancelled'>('Ongoing');
   const [channelId, setChannelId] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+
+  const handleAIRate = async () => {
+    if (!title.trim()) return;
+    setAiLoading(true);
+    try {
+      const r = await getAIRating(title, genre, 'series');
+      setRating(r);
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,14 +67,8 @@ export function AddSeriesModal({ channels, onClose, onAdd }: AddSeriesModalProps
             <label className="block text-sm font-medium text-gray-700 mb-2">Series Icon</label>
             <div className="flex flex-wrap gap-2">
               {emojis.map(e => (
-                <button
-                  key={e}
-                  type="button"
-                  onClick={() => setPoster(e)}
-                  className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg transition-all ${
-                    poster === e ? 'bg-pink-100 ring-2 ring-pink-500 scale-110' : 'bg-gray-50 hover:bg-gray-100'
-                  }`}
-                >
+                <button key={e} type="button" onClick={() => setPoster(e)}
+                  className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg transition-all ${poster === e ? 'bg-pink-100 ring-2 ring-pink-500 scale-110' : 'bg-gray-50 hover:bg-gray-100'}`}>
                   {e}
                 </button>
               ))}
@@ -66,105 +78,75 @@ export function AddSeriesModal({ channels, onClose, onAdd }: AddSeriesModalProps
           {/* Title */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
               placeholder="Enter series title"
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
-              required
-            />
+              required />
           </div>
 
           {/* Genre, Year, Status */}
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Genre</label>
-              <select
-                value={genre}
-                onChange={(e) => setGenre(e.target.value)}
-                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
-              >
+              <select value={genre} onChange={(e) => setGenre(e.target.value)}
+                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500">
                 {genres.map(g => <option key={g} value={g}>{g}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
-              <input
-                type="number"
-                value={year}
-                onChange={(e) => setYear(Number(e.target.value))}
-                min={1950}
-                max={2030}
-                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
-              />
+              <input type="number" value={year} onChange={(e) => setYear(Number(e.target.value))}
+                min={1950} max={2030}
+                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as 'Ongoing' | 'Completed' | 'Cancelled')}
-                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
-              >
+              <select value={status} onChange={(e) => setStatus(e.target.value as 'Ongoing' | 'Completed' | 'Cancelled')}
+                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500">
                 {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
           </div>
 
-          {/* Rating, Seasons, Episodes, Duration */}
-          <div className="grid grid-cols-4 gap-3">
-            <div>
+          {/* Rating (AI), Seasons, Episodes, Duration */}
+          <div className="grid grid-cols-4 gap-2">
+            <div className="col-span-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">Rating</label>
-              <input
-                type="number"
-                value={rating}
-                onChange={(e) => setRating(Number(e.target.value))}
-                step={0.1}
-                min={0}
-                max={10}
-                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
-              />
+              <div className="flex gap-1">
+                <input type="number" value={rating} onChange={(e) => setRating(Number(e.target.value))}
+                  step={0.1} min={0} max={10}
+                  className="flex-1 min-w-0 px-2 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500" />
+                <button type="button" onClick={handleAIRate} disabled={aiLoading || !title.trim()}
+                  title="Auto-rate with AI"
+                  className="flex items-center justify-center px-2 py-2 bg-gradient-to-r from-violet-500 to-indigo-600 text-white rounded-xl hover:from-violet-600 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0 shadow-md">
+                  {aiLoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                </button>
+              </div>
+              {aiLoading && <p className="text-[10px] text-violet-500 mt-0.5">Rating...</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Seasons</label>
-              <input
-                type="number"
-                value={seasons}
-                onChange={(e) => setSeasons(Number(e.target.value))}
-                min={1}
-                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
-              />
+              <input type="number" value={seasons} onChange={(e) => setSeasons(Number(e.target.value))} min={1}
+                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Episodes</label>
-              <input
-                type="number"
-                value={episodes}
-                onChange={(e) => setEpisodes(Number(e.target.value))}
-                min={1}
-                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
-              />
+              <input type="number" value={episodes} onChange={(e) => setEpisodes(Number(e.target.value))} min={1}
+                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Ep. Duration</label>
-              <input
-                type="text"
-                value={episodeDuration}
-                onChange={(e) => setEpisodeDuration(e.target.value)}
+              <label className="block text-sm font-medium text-gray-700 mb-1">Ep. Dur.</label>
+              <input type="text" value={episodeDuration} onChange={(e) => setEpisodeDuration(e.target.value)}
                 placeholder="45m"
-                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
-              />
+                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500" />
             </div>
           </div>
 
           {/* Language */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Language</label>
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
-            >
+            <select value={language} onChange={(e) => setLanguage(e.target.value)}
+              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500">
               {languages.map(l => <option key={l} value={l}>{l}</option>)}
             </select>
           </div>
@@ -173,26 +155,14 @@ export function AddSeriesModal({ channels, onClose, onAdd }: AddSeriesModalProps
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Assign to Channel (optional)</label>
             <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setChannelId(null)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                  channelId === null ? 'bg-gray-200 text-gray-700' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
-                }`}
-              >
+              <button type="button" onClick={() => setChannelId(null)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${channelId === null ? 'bg-gray-200 text-gray-700' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}>
                 None
               </button>
               {channels.map(ch => (
-                <button
-                  key={ch.id}
-                  type="button"
-                  onClick={() => setChannelId(ch.id)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1 ${
-                    channelId === ch.id ? 'bg-violet-100 text-violet-700' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
-                  }`}
-                >
-                  <span>{ch.logo}</span>
-                  {ch.name}
+                <button key={ch.id} type="button" onClick={() => setChannelId(ch.id)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1 ${channelId === ch.id ? 'bg-violet-100 text-violet-700' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>
+                  <span>{ch.logo}</span>{ch.name}
                 </button>
               ))}
             </div>
@@ -201,28 +171,19 @@ export function AddSeriesModal({ channels, onClose, onAdd }: AddSeriesModalProps
           {/* Description */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Brief description of the series"
-              rows={2}
-              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 resize-none"
-            />
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)}
+              placeholder="Brief description of the series" rows={2}
+              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 resize-none" />
           </div>
 
           {/* Actions */}
           <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-2.5 text-sm font-medium text-gray-500 bg-gray-50 hover:bg-gray-100 rounded-xl transition-all"
-            >
+            <button type="button" onClick={onClose}
+              className="flex-1 py-2.5 text-sm font-medium text-gray-500 bg-gray-50 hover:bg-gray-100 rounded-xl transition-all">
               Cancel
             </button>
-            <button
-              type="submit"
-              className="flex-1 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 rounded-xl shadow-lg shadow-pink-500/25 transition-all"
-            >
+            <button type="submit"
+              className="flex-1 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 rounded-xl shadow-lg shadow-pink-500/25 transition-all">
               Add Series
             </button>
           </div>

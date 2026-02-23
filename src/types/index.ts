@@ -106,7 +106,34 @@ export type ViewMode =
   | 'channels'
   | 'channel-detail'
   | 'movies'
-  | 'series';
+  | 'series'
+  | 'tickets'
+  | 'revenue';
+
+export interface TicketMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderType: 'client' | 'admin';
+  message: string;
+  timestamp: string;
+}
+
+export interface SupportTicket {
+  id: string;
+  clientId: string;
+  clientName: string;
+  clientCompany: string;
+  clientEmail: string;
+  clientLogo: string;
+  subject: string;
+  category: 'Technical' | 'Billing' | 'Content' | 'Distribution' | 'Account' | 'General';
+  priority: 'Low' | 'Medium' | 'High' | 'Urgent';
+  status: 'Open' | 'In Progress' | 'Resolved' | 'Closed';
+  messages: TicketMessage[];
+  createdAt: string;
+  updatedAt: string;
+}
 
 export type AppMode = 'login' | 'admin' | 'client-portal';
 

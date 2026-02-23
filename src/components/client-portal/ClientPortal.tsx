@@ -1,6 +1,5 @@
-import { Client, Channel, Movie, Series, ClientFinancials } from '../../types';
+import { Client, Channel, Movie, Series, ClientFinancials, SupportTicket } from '../../types';
 import { ClientPortalDashboard } from './ClientPortalDashboard';
-
 import { DistributionPlatform } from '../../types';
 
 interface ClientPortalProps {
@@ -9,14 +8,23 @@ interface ClientPortalProps {
   movies: Movie[];
   series: Series[];
   financials: ClientFinancials;
+  tickets: SupportTicket[];
   onExitPortal: () => void;
   onMarkNotificationRead: (id: string) => void;
   onMarkAllRead: () => void;
   onAddRokuChannel: (channelId: string, channelName: string, platform: DistributionPlatform) => void;
   onRemoveRokuChannel: (rokuChannelId: string) => void;
+  onCreateTicket: (subject: string, category: SupportTicket['category'], priority: SupportTicket['priority'], message: string) => void;
+  onReplyTicket: (ticketId: string, message: string) => void;
+  onSavePayPal: (email: string) => void;
 }
 
-export function ClientPortal({ client, channels, movies, series, financials, onExitPortal, onMarkNotificationRead, onMarkAllRead, onAddRokuChannel, onRemoveRokuChannel }: ClientPortalProps) {
+export function ClientPortal({
+  client, channels, movies, series, financials, tickets,
+  onExitPortal, onMarkNotificationRead, onMarkAllRead,
+  onAddRokuChannel, onRemoveRokuChannel,
+  onCreateTicket, onReplyTicket, onSavePayPal
+}: ClientPortalProps) {
   if (!client) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -35,11 +43,15 @@ export function ClientPortal({ client, channels, movies, series, financials, onE
       movies={movies}
       series={series}
       financials={financials}
+      tickets={tickets}
       onExitPortal={onExitPortal}
       onMarkNotificationRead={onMarkNotificationRead}
       onMarkAllRead={onMarkAllRead}
       onAddRokuChannel={onAddRokuChannel}
       onRemoveRokuChannel={onRemoveRokuChannel}
+      onCreateTicket={onCreateTicket}
+      onReplyTicket={onReplyTicket}
+      onSavePayPal={onSavePayPal}
     />
   );
 }
