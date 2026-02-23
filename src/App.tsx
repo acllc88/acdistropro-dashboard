@@ -45,6 +45,7 @@ import {
   updateSeries,
   deleteSeries as fbDeleteSeries,
   saveFinancials,
+  updateDeviceDistribution,
   addAdminNotification,
   markAdminNotifRead,
   markAllAdminNotifsRead,
@@ -473,6 +474,14 @@ export function App() {
     });
   }, [pushNotification]);
 
+  // ── Device Distribution ────────────────────────────────────────────────
+  const handleUpdateDeviceDistribution = useCallback(async (
+    clientId: string,
+    dd: { mobile: number; desktop: number; smartTV: number; tablet: number }
+  ) => {
+    try { await updateDeviceDistribution(clientId, dd); } catch (e) { console.error(e); }
+  }, []);
+
   // ── Channel CRUD ──────────────────────────────────────────────────────
   const handleViewChannel = useCallback((channelId: string) => {
     setSelectedChannelId(channelId);
@@ -794,6 +803,7 @@ export function App() {
             onUpdateClientStatus={handleUpdateClientStatus}
             onChangePassword={handleChangeClientPassword}
             onUpdateRevenueShare={handleUpdateRevenueShare}
+            onUpdateDeviceDistribution={handleUpdateDeviceDistribution}
           />
         );
 

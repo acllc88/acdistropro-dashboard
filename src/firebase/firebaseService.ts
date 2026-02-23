@@ -206,6 +206,17 @@ export async function clearAllAdminNotifs(notifs: AdminNotification[]): Promise<
   await batch.commit();
 }
 
+// ─── Device Distribution ──────────────────────────────────────────────
+
+export async function updateDeviceDistribution(clientId: string, deviceDistribution: { mobile: number; desktop: number; smartTV: number; tablet: number }): Promise<void> {
+  try {
+    await updateDoc(doc(db, COLLECTIONS.clients, clientId), { deviceDistribution: stripUndefined(deviceDistribution as unknown as DocumentData) });
+    console.log('[ACDistro] Device distribution updated for', clientId);
+  } catch (e) {
+    console.error('[ACDistro] Error updating device distribution:', e);
+  }
+}
+
 // ─── Bulk update helpers ──────────────────────────────────────────────
 
 export async function updateClientNotifications(clientId: string, notifications: ClientNotification[]): Promise<void> {

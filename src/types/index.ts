@@ -23,6 +23,13 @@ export interface DistributionChannel {
 export type RokuChannel = DistributionChannel;
 export type RokuDevice = DistributionChannel;
 
+export interface DeviceDistribution {
+  mobile: number;
+  desktop: number;
+  smartTV: number;
+  tablet: number;
+}
+
 export interface Client {
   id: string;
   name: string;
@@ -40,6 +47,7 @@ export interface Client {
   revenueShare: number;
   monthlyFee: number;
   rokuChannels: RokuChannel[];
+  deviceDistribution?: DeviceDistribution;
   adminActions?: AdminAction[];
   banReason?: string;
   suspendReason?: string;

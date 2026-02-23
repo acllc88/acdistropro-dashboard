@@ -4,7 +4,7 @@ import {
   Shield, ShieldOff, UserCheck, UserX, AlertTriangle, CheckCircle,
   Tv2, Copy, Check, Activity
 } from 'lucide-react';
-import { Client, Channel, Movie, Series, ClientNotification, DistributionChannel, AdminAction } from '../types';
+import { Client, Channel, Movie, Series, ClientNotification, DistributionChannel, AdminAction, DeviceDistribution } from '../types';
 import { useState } from 'react';
 import { cn } from '../utils/cn';
 
@@ -35,12 +35,14 @@ interface ClientDetailViewProps {
   onUpdateClientStatus: (clientId: string, status: Client['status'], reason?: string) => void;
   onChangePassword: (clientId: string, newPassword: string) => void;
   onUpdateRevenueShare: (clientId: string, revenueShare: number, monthlyFee: number) => void;
+  onUpdateDeviceDistribution: (clientId: string, dd: DeviceDistribution) => void;
 }
 
 export function ClientDetailView({
   client, channels, allChannels, movies, series,
   onBack, onViewChannel, onAssignChannel, onSendNotification,
-  onUpdateRokuStatus, onUpdateClientStatus, onChangePassword, onUpdateRevenueShare
+  onUpdateRokuStatus, onUpdateClientStatus, onChangePassword, onUpdateRevenueShare,
+  onUpdateDeviceDistribution
 }: ClientDetailViewProps) {
   const [showAddChannel, setShowAddChannel] = useState(false);
   const [showNotifModal, setShowNotifModal] = useState(false);
@@ -65,6 +67,11 @@ export function ClientDetailView({
   const [editRevenueShare, setEditRevenueShare] = useState(client.revenueShare);
   const [editMonthlyFee, setEditMonthlyFee] = useState(client.monthlyFee);
   const [revenueSuccess, setRevenueSuccess] = useState('');
+
+  // Device distribution edit state
+  const [showDeviceEdit, setShowDeviceEdit] = useState(false);
+  const [editDD, setEditDD] = useState<DeviceDistribution>(client.deviceDistribution || { mobile: 0, desktop: 0, smartTV: 0, tablet: 0 });
+  const [ddSuccess, setDdSuccess] = useState('');
 
   const unassignedChannels = allChannels.filter(ch => ch.clientId === null);
   const filteredUnassigned = unassignedChannels.filter(ch =>
@@ -772,6 +779,82 @@ export function ClientDetailView({
                     >
                       <Users size={15} />
                       Update Billing
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Device Distribution Panel */}
+          <div className="bg-white rounded-2xl shadow-sm border border-cyan-100 overflow-hidden">
+            <div className="px-6 py-4 border-b border-cyan-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Tv2 size={18} className="text-cyan-500" />
+                <h3 className="text-lg font-semibold text-gray-900">Device Distribution (Analytics)</h3>
+              </div>
+              <button
+                onClick={() => { setShowDeviceEdit(!showDeviceEdit); setEditDD(client.deviceDistribution || { mobile: 0, desktop: 0, smartTV: 0, tablet: 0 }); setDdSuccess(''); }}
+                className="text-xs text-cyan-600 hover:text-cyan-800 font-medium transition-colors"
+              >
+                {showDeviceEdit ? 'Cancel' : 'Edit'}
+              </button>
+            </div>
+            <div className="p-6">
+              {!showDeviceEdit ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { label: 'Mobile', value: client.deviceDistribution?.mobile || 0, color: 'bg-blue-50 text-blue-600 border-blue-100' },
+                    { label: 'Desktop', value: client.deviceDistribution?.desktop || 0, color: 'bg-emerald-50 text-emerald-600 border-emerald-100' },
+                    { label: 'Smart TV', value: client.deviceDistribution?.smartTV || 0, color: 'bg-violet-50 text-violet-600 border-violet-100' },
+                    { label: 'Tablet', value: client.deviceDistribution?.tablet || 0, color: 'bg-amber-50 text-amber-600 border-amber-100' },
+                  ].map(d => (
+                    <div key={d.label} className={`p-4 rounded-xl border text-center ${d.color}`}>
+                      <p className="text-2xl font-black">{d.value}%</p>
+                      <p className="text-xs font-medium mt-1">{d.label}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-xs text-gray-500">Set the device usage percentage for this client's analytics dashboard. Values should roughly sum to 100.</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {[
+                      { key: 'mobile' as const, label: 'Mobile' },
+                      { key: 'desktop' as const, label: 'Desktop' },
+                      { key: 'smartTV' as const, label: 'Smart TV' },
+                      { key: 'tablet' as const, label: 'Tablet' },
+                    ].map(d => (
+                      <div key={d.key}>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">{d.label} %</label>
+                        <input
+                          type="number"
+                          value={editDD[d.key]}
+                          onChange={(e) => setEditDD({ ...editDD, [d.key]: Math.max(0, Number(e.target.value)) })}
+                          min={0} max={100}
+                          className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-400">Total: {editDD.mobile + editDD.desktop + editDD.smartTV + editDD.tablet}%</p>
+                  {ddSuccess && (
+                    <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 border border-emerald-200 rounded-xl">
+                      <CheckCircle size={14} className="text-emerald-500 shrink-0" />
+                      <p className="text-sm text-emerald-600">{ddSuccess}</p>
+                    </div>
+                  )}
+                  <div className="flex gap-3">
+                    <button onClick={() => setShowDeviceEdit(false)} className="flex-1 py-2.5 text-sm font-medium text-gray-500 bg-gray-50 hover:bg-gray-100 rounded-xl transition-all">Cancel</button>
+                    <button
+                      onClick={() => {
+                        onUpdateDeviceDistribution(client.id, editDD);
+                        setDdSuccess('Device distribution updated! Client analytics will reflect this.');
+                        setTimeout(() => { setShowDeviceEdit(false); setDdSuccess(''); }, 2500);
+                      }}
+                      className="flex-1 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-700 hover:to-teal-700 rounded-xl shadow-md transition-all"
+                    >
+                      Save Distribution
                     </button>
                   </div>
                 </div>
