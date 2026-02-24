@@ -614,8 +614,16 @@ export function App() {
     });
   }, [financials, pushNotification]);
 
-  const handleAddPayment = useCallback(async (clientId: string, payment: PaymentRecord) => {
+  const handleAddPayment = useCallback(async (clientId: string, data: { amount: number; method: string; status: string }) => {
     const fin = financials[clientId] || { clientId, payments: [], monthlyRevenue: [] };
+    const payment: PaymentRecord = {
+      id: `pay-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      date: new Date().toISOString(),
+      amount: data.amount,
+      method: data.method,
+      status: data.status as 'Paid' | 'Pending' | 'Processing',
+      description: `${data.method} payment`,
+    };
     const updatedPayments = [payment, ...fin.payments];
     const updatedFin = { ...fin, payments: updatedPayments };
     try { await saveFinancials(clientId, updatedFin); } catch (e) { console.error(e); }
@@ -1019,9 +1027,40 @@ export function App() {
         return (
           <AdminRevenueManager
             clients={clients}
+            channels={channels}
+            movies={movies}
+            series={series}
             financials={financials}
-            onAddMonthlyRevenue={handleAddMonthlyRevenue}
+            onAddMonthlyRevenue={(clientId, data) => {
+              const revenue: MonthlyRevenue = {
+                month: `${data.month} ${data.year}`,
+                amount: data.amount,
+                views: data.views,
+                subscribers: data.subscribers,
+                watchTime: data.watchTime,
+              };
+              handleAddMonthlyRevenue(clientId, revenue);
+            }}
             onAddPayment={handleAddPayment}
+            onUpdateDeviceDistribution={handleUpdateDeviceDistribution}
+            onUpdateContentPerformance={async (type, id, data) => {
+              if (type === 'movie') {
+                try { await updateMovie(id, { views: data.views, rating: data.rating, revenue: data.revenue }); } catch (e) { console.error(e); }
+              } else {
+                try { await updateSeries(id, { views: data.views, rating: data.rating, revenue: data.revenue }); } catch (e) { console.error(e); }
+              }
+            }}
+            onUpdateClientAnalytics={async (clientId, data) => {
+              try { 
+                await updateClient(clientId, { 
+                  analytics: { 
+                    totalViews: data.totalViews, 
+                    totalSubscribers: data.totalSubscribers, 
+                    avgWatchTime: data.avgWatchTime 
+                  } 
+                } as Partial<Client>); 
+              } catch (e) { console.error(e); }
+            }}
           />
         );
 

@@ -157,6 +157,9 @@ export interface ClientNotification {
 export interface MonthlyRevenue {
   month: string;
   amount: number;
+  views?: number;
+  subscribers?: number;
+  watchTime?: number;
 }
 
 export interface PaymentRecord {
